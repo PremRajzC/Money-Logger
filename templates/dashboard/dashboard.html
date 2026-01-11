@@ -194,6 +194,15 @@
                     <label for="end_date">End Date</label>
                     <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
                 </div>
+                <div class="filter-group">
+                    <label for="category">Category</label>
+                    <select id="category" name="category" style="padding: 10px; border-radius: 10px; border: 1px solid #dcdde1; font-size: 0.9rem;">
+                        <option value="">All Categories</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <button type="submit" class="btn primary">🔍 Filter</button>
                 <a href="{% url 'dashboard' %}" class="btn">Reset</a>
             </form>

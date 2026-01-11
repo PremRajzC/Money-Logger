@@ -13,6 +13,7 @@ from django.http import JsonResponse
 def dashboard(request):
     start_date = request.GET.get("start_date")
     end_date = request.GET.get("end_date")
+    category = request.GET.get("category")
     page = request.GET.get("page", 1)
 
     transactions = Transaction.objects.filter(user=request.user).order_by('-date')
@@ -31,6 +32,10 @@ def dashboard(request):
             transactions = transactions.filter(date__lte=end_date_obj)
         except ValueError:
             pass
+    
+    # Filter by category
+    if category:
+        transactions = transactions.filter(category__icontains=category)
 
     paginator = Paginator(transactions, 10)
     transactions_page = paginator.get_page(page)
@@ -38,6 +43,9 @@ def dashboard(request):
     total_income = transactions.filter(transaction_type="INCOME").aggregate(total=Sum("amount"))["total"] or 0
     total_expense = transactions.filter(transaction_type="EXPENSE").aggregate(total=Sum("amount"))["total"] or 0
     balance = total_income - total_expense
+    
+    # Get unique categories for filter dropdown
+    categories = Transaction.objects.filter(user=request.user).values_list('category', flat=True).distinct().order_by('category')
 
     context = {
         "transactions": transactions_page,
@@ -46,6 +54,8 @@ def dashboard(request):
         "balance": balance,
         "start_date": start_date,
         "end_date": end_date,
+        "category": category,
+        "categories": categories,
     }
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':

@@ -35,11 +35,11 @@
 
 <div class="pagination">
     {% if transactions.has_previous %}
-        <a href="?page={{ transactions.previous_page_number }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" class="page-link">Previous</a>
+        <a href="?page={{ transactions.previous_page_number }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if category %}&category={{ category }}{% endif %}" class="page-link">Previous</a>
     {% endif %}
     <span>Page {{ transactions.number }} of {{ transactions.paginator.num_pages }}</span>
     {% if transactions.has_next %}
-        <a href="?page={{ transactions.next_page_number }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" class="page-link">Next</a>
+        <a href="?page={{ transactions.next_page_number }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if category %}&category={{ category }}{% endif %}" class="page-link">Next</a>
     {% endif %}
 </div>
 {% else %}
