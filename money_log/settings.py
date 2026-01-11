@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-4u)hc$wao_i_f1t)!7l1j8lz_vpdk37*sy!9akc!x5pmqnmb^y"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["*"]
 
@@ -38,6 +38,10 @@ CSRF_TRUSTED_ORIGINS = [
     "https://frowsiest-xenomorphically-florine.ngrok-free.dev",
     "https://vivienne-uninherent-sonorously.ngrok-free.dev",
 ]
+
+SECURE_SSL_REDIRECT = True
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
 
 # LOAD SECURITY KEYS 
 
@@ -160,4 +164,5 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
 
