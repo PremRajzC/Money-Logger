@@ -1,0 +1,147 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survival Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: #f8f9fa; color: #2c3e50; line-height: 1.6; }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .back-btn { display: inline-block; background: #4facfe; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; margin-bottom: 20px; }
+        
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: 2rem; color: #2c3e50; margin-bottom: 10px; }
+        .header p { color: #7f8c8d; }
+
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .metric { background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .metric-value { font-size: 2rem; font-weight: 700; margin-bottom: 5px; }
+        .metric-label { color: #7f8c8d; font-size: 0.9rem; }
+        
+        .wealth { border-top: 4px solid #3498db; }
+        .health { border-top: 4px solid var(--health-color); }
+        .survival { border-top: 4px solid #e74c3c; }
+        
+        .good { color: #2ecc71; }
+        .warning { color: #f39c12; }
+        .danger { color: #e74c3c; }
+
+        .details { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .details h3 { margin-bottom: 15px; color: #2c3e50; }
+        .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+        .detail-item { text-align: center; padding: 10px; background: #f8f9fa; border-radius: 8px; }
+        .detail-value { font-weight: 600; font-size: 1.1rem; }
+        .detail-label { font-size: 0.8rem; color: #7f8c8d; margin-top: 5px; }
+
+        .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .warning-text { color: #856404; font-weight: 600; }
+
+        @media(max-width:600px){
+            .container { padding: 15px; }
+            .metrics { grid-template-columns: 1fr; }
+            .detail-grid { grid-template-columns: 1fr 1fr; }
+            .metric-value { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'dashboard' %}" class="back-btn">← Dashboard</a>
+        
+        <div class="header">
+            <h1>🛡️ Financial Health Check</h1>
+            <p>Your money situation at a glance</p>
+        </div>
+
+        {% if warning_message %}
+        <div class="warning">
+            <div class="warning-text">{{ warning_message }}</div>
+        </div>
+        {% endif %}
+
+        <div class="metrics">
+            <div class="metric wealth">
+                <div class="metric-value {% if available_funds > 0 %}good{% else %}danger{% endif %}">
+                    ₹{{ available_funds|floatformat:0|intcomma }}
+                </div>
+                <div class="metric-label">💰 Available Money</div>
+            </div>
+
+            <div class="metric health" style="--health-color: {{ health_color }};">
+                <div class="metric-value" style="color: {{ health_color }};">
+                    {{ health_score }}/100
+                </div>
+                <div class="metric-label">🏥 Health Score</div>
+            </div>
+
+            <div class="metric survival">
+                <div class="metric-value {% if survive %}good{% else %}danger{% endif %}">
+                    {% if survive %}Safe{% else %}Risk{% endif %}
+                </div>
+                <div class="metric-label">🛡️ Month Status</div>
+            </div>
+        </div>
+
+        <div class="details">
+            <h3>This Month Summary</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-value good">₹{{ income_mtd|floatformat:0|intcomma }}</div>
+                    <div class="detail-label">Income</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-value danger">₹{{ expense_mtd|floatformat:0|intcomma }}</div>
+                    <div class="detail-label">Expenses</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-value">₹{{ avg_daily_spend|floatformat:0|intcomma }}</div>
+                    <div class="detail-label">Daily Spend</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-value">{{ days_left }}</div>
+                    <div class="detail-label">Days Left</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="details">
+            <h3>Money Breakdown</h3>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-value">₹{{ upi_balance|floatformat:0|intcomma }}</div>
+                    <div class="detail-label">UPI Cash</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-value">₹{{ hand_balance|floatformat:0|intcomma }}</div>
+                    <div class="detail-label">Hand Cash</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-value {% if projected_end_balance >= 0 %}good{% else %}danger{% endif %}">
+                        ₹{{ projected_end_balance|floatformat:0|intcomma }}
+                    </div>
+                    <div class="detail-label">Month End Balance</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-value">{{ days_passed }}/{{ days_in_month }}</div>
+                    <div class="detail-label">Days Passed</div>
+                </div>
+            </div>
+        </div>
+
+        {% if insights %}
+        <div class="details">
+            <h3>🤖 AI Insights</h3>
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #2ecc71;">
+                {% for insight in insights %}
+                    <div style="margin-bottom: 8px; color: #2d5016; font-weight: 500;">{{ insight }}</div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

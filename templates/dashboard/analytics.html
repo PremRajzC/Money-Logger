@@ -109,6 +109,12 @@
             .category-breakdown { display: block !important; }
             .category-breakdown > div { margin-bottom: 20px; }
         }
+        
+        /* Warning Alert */
+        .warning-alert { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .warning-text { color: #856404; font-weight: 600; }
+        .survival-btn { background: #ffc107; color: #856404; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+        .survival-btn:hover { background: #e0a800; }
     </style>
 </head>
 <body>
@@ -123,6 +129,13 @@
 
     <div class="container">
         <a href="{% url 'dashboard' %}" class="back-btn">← Back to Dashboard</a>
+        
+        {% if warning_message %}
+        <div class="warning-alert">
+            <div class="warning-text">{{ warning_message }}</div>
+            <a href="{% url 'survival' %}" class="survival-btn">🛡️ Check Survival</a>
+        </div>
+        {% endif %}
         
         <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
             <a href="{% url 'logout' %}" style="background: #e74c3c; color: #fff; padding: 10px 20px; border-radius: 10px; text-decoration: none; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='translateY(0px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'">🚪 Logout</a>
@@ -224,7 +237,7 @@
                     <div>
                         <h4 style="color: #e74c3c; margin-bottom: 10px;">Expenses</h4>
                         <div class="table-wrapper">
-                            <table>
+                            <table id="expenseTable">
                                 <thead>
                                     <tr>
                                         <th>Category</th>
@@ -233,7 +246,7 @@
                                 </thead>
                                 <tbody>
                                     {% for c in category_expense %}
-                                    <tr>
+                                    <tr class="category-row" data-category="{{ c.category }}" data-amount="{{ c.total }}" style="cursor: pointer;">
                                         <td>{{ c.category }}</td>
                                         <td style="color: #e74c3c; font-weight: 600;">₹{{ c.total|floatformat:0|intcomma }}</td>
                                     </tr>
@@ -242,6 +255,10 @@
                                         <td colspan="2" style="text-align: center; color: #7f8c8d;">No expenses</td>
                                     </tr>
                                     {% endfor %}
+                                    <tr style="border-top: 2px solid #e74c3c; font-weight: 700; background: #ffeaea;">
+                                        <td>Total</td>
+                                        <td style="color: #e74c3c;">₹<span id="expenseTotal">{{ month_expense|floatformat:0|intcomma }}</span></td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -249,7 +266,7 @@
                     <div>
                         <h4 style="color: #2ecc71; margin-bottom: 10px;">Income</h4>
                         <div class="table-wrapper">
-                            <table>
+                            <table id="incomeTable">
                                 <thead>
                                     <tr>
                                         <th>Category</th>
@@ -258,7 +275,7 @@
                                 </thead>
                                 <tbody>
                                     {% for c in category_income %}
-                                    <tr>
+                                    <tr class="category-row" data-category="{{ c.category }}" data-amount="{{ c.total }}" style="cursor: pointer;">
                                         <td>{{ c.category }}</td>
                                         <td style="color: #2ecc71; font-weight: 600;">₹{{ c.total|floatformat:0|intcomma }}</td>
                                     </tr>
@@ -267,6 +284,10 @@
                                         <td colspan="2" style="text-align: center; color: #7f8c8d;">No income</td>
                                     </tr>
                                     {% endfor %}
+                                    <tr style="border-top: 2px solid #2ecc71; font-weight: 700; background: #eafaf1;">
+                                        <td>Total</td>
+                                        <td style="color: #2ecc71;">₹<span id="incomeTotal">{{ month_income|floatformat:0|intcomma }}</span></td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -344,7 +365,7 @@
         const expenseCategories = [{% for c in category_expense %}"{{ c.category }}"{% if not forloop.last %},{% endif %}{% endfor %}];
         const expenseData = [{% for c in category_expense %}{{ c.total }}{% if not forloop.last %},{% endif %}{% endfor %}];
         
-        new Chart(expenseCtx, {
+        const expenseChart = new Chart(expenseCtx, {
             type: 'doughnut',
             data: {
                 labels: expenseCategories,
@@ -356,7 +377,23 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' } }
+                plugins: { 
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ₹' + context.parsed.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const category = expenseCategories[index];
+                        toggleCategory('expense', category);
+                    }
+                }
             }
         });
 
@@ -365,7 +402,7 @@
         const incomeCategories = [{% for c in category_income %}"{{ c.category }}"{% if not forloop.last %},{% endif %}{% endfor %}];
         const incomeData = [{% for c in category_income %}{{ c.total }}{% if not forloop.last %},{% endif %}{% endfor %}];
         
-        new Chart(incomeCtx, {
+        const incomeChart = new Chart(incomeCtx, {
             type: 'doughnut',
             data: {
                 labels: incomeCategories,
@@ -377,8 +414,86 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' } }
+                plugins: { 
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ₹' + context.parsed.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const category = incomeCategories[index];
+                        toggleCategory('income', category);
+                    }
+                }
             }
+        });
+
+        // Category toggle functionality
+        let hiddenCategories = { expense: new Set(), income: new Set() };
+        
+        function toggleCategory(type, category) {
+            const isHidden = hiddenCategories[type].has(category);
+            
+            if (isHidden) {
+                hiddenCategories[type].delete(category);
+            } else {
+                hiddenCategories[type].add(category);
+            }
+            
+            updateChart(type);
+            updateTable(type);
+        }
+        
+        function updateChart(type) {
+            const chart = type === 'expense' ? expenseChart : incomeChart;
+            const categories = type === 'expense' ? expenseCategories : incomeCategories;
+            const data = type === 'expense' ? expenseData : incomeData;
+            
+            const filteredData = data.map((value, index) => 
+                hiddenCategories[type].has(categories[index]) ? 0 : value
+            );
+            
+            chart.data.datasets[0].data = filteredData;
+            chart.update();
+        }
+        
+        function updateTable(type) {
+            const tableId = type === 'expense' ? 'expenseTable' : 'incomeTable';
+            const totalId = type === 'expense' ? 'expenseTotal' : 'incomeTotal';
+            const rows = document.querySelectorAll(`#${tableId} .category-row`);
+            
+            let total = 0;
+            rows.forEach(row => {
+                const category = row.dataset.category;
+                const amount = parseFloat(row.dataset.amount);
+                
+                if (hiddenCategories[type].has(category)) {
+                    row.style.opacity = '0.3';
+                    row.style.textDecoration = 'line-through';
+                } else {
+                    row.style.opacity = '1';
+                    row.style.textDecoration = 'none';
+                    total += amount;
+                }
+            });
+            
+            document.getElementById(totalId).textContent = total.toLocaleString();
+        }
+        
+        // Add click handlers to table rows
+        document.querySelectorAll('.category-row').forEach(row => {
+            row.addEventListener('click', function() {
+                const category = this.dataset.category;
+                const table = this.closest('table');
+                const type = table.id === 'expenseTable' ? 'expense' : 'income';
+                toggleCategory(type, category);
+            });
         });
     </script>
 </body>

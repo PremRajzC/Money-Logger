@@ -353,6 +353,12 @@
                     </div>
                 </div>
 
+
+                <div class="form-group">
+                    <label for="{{ form.money_type.id_for_label }}">Payment Method</label>
+                    {{ form.money_type }}
+                </div>
+
                 <div class="form-group">
                     <label for="{{ form.amount.id_for_label }}">Amount (₹)</label>
                     {{ form.amount }}
@@ -362,6 +368,7 @@
                     <label for="{{ form.category.id_for_label }}">Category</label>
                     {{ form.category }}
                 </div>
+
 
                 <div class="form-group">
                     <label for="{{ form.description.id_for_label }}">Description</label>

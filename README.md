@@ -9,12 +9,20 @@ A modern, responsive web application built with Django for tracking personal inc
 - **Transaction Management**: Add, view, and filter income/expense transactions
 - **Real-time Dashboard**: Overview of financial status with summary cards
 - **Advanced Analytics**: Monthly trends, category breakdowns, and interactive charts
+- **Survival Dashboard**: Financial health monitoring with AI-powered insights
+- **Payment Method Tracking**: Separate tracking for UPI Cash and Hand Cash balances
+- **Multi-Filter System**: Filter by date, category, transaction type, and payment method
 - **Responsive Design**: Optimized for mobile, tablet, and desktop devices
 
 ### Key Highlights
 - **Modern UI/UX**: Clean, professional interface with glassmorphism effects
 - **Interactive Charts**: Daily trends, monthly comparisons, and category distributions
-- **Smart Filtering**: Date-based transaction filtering with pagination
+- **Smart Filtering**: Date, category, transaction type, and payment method filtering
+- **Interactive Category Analysis**: Click categories to toggle visibility and recalculate totals
+- **AI-Powered Insights**: Intelligent spending analysis and financial recommendations
+- **Survival Analytics**: Month-end balance prediction and financial health scoring
+- **Payment Method Balances**: Separate balance tracking for UPI and Hand Cash
+- **Real-time Warnings**: Proactive alerts for financial risks and spending patterns
 - **Mobile-First**: Touch-friendly design with responsive layouts
 - **Data Visualization**: Chart.js integration for beautiful financial insights
 
@@ -77,6 +85,7 @@ class User(AbstractUser):
 class Transaction(models.Model):
     user = ForeignKey(User)                    # Transaction owner
     transaction_type = CharField               # 'INCOME' or 'EXPENSE'
+    money_type = CharField                     # 'UPI CASH' or 'HAND CASH'
     amount = DecimalField(max_digits=12)       # Transaction amount
     category = CharField(max_length=50)        # Transaction category
     description = CharField(max_length=200)    # Optional description
@@ -119,15 +128,27 @@ User Login → Fetch Transactions → Calculate Summaries → Render Dashboard
 
 ### Dashboard (`dashboard/views.py`)
 - **Summary Cards**: Total income, expenses, and balance
-- **Transaction Filtering**: Date-based filtering with pagination
-- **Recent Transactions**: Paginated transaction list
-- **AJAX Pagination**: Smooth page transitions
+- **Payment Method Balances**: Separate UPI Cash and Hand Cash balance display
+- **Multi-Filter System**: Date, category, transaction type, and payment method filters
+- **Financial Health Warnings**: Real-time alerts for spending risks
+- **Recent Transactions**: Paginated transaction list with inline filtering
+- **AJAX Pagination**: Smooth page transitions with preserved filters
+
+### Survival Dashboard (`dashboard/views.py - survival_dashboard`)
+- **Financial Health Score**: 0-100 scoring system with color-coded status
+- **Wealth Tracking**: Available funds across payment methods
+- **Month Survival Analysis**: Prediction of month-end financial status
+- **AI Insights**: Intelligent spending analysis and recommendations
+- **Cashflow Forecasting**: End-of-month balance predictions
+- **Dynamic Warnings**: Real-time financial risk alerts
 
 ### Analytics (`dashboard/views.py - analytics`)
 - **Month Navigation**: Previous/next month browsing
 - **Daily Trends**: Line charts showing daily income/expense patterns
 - **Monthly Overview**: Bar charts for yearly monthly comparison
-- **Category Analysis**: Pie charts for income/expense distribution
+- **Interactive Category Analysis**: Clickable pie charts and tables
+- **Category Toggle Feature**: Click categories to exclude from totals
+- **Real-time Total Calculation**: Dynamic total updates when categories are toggled
 - **Data Aggregation**: Complex database queries for insights
 
 ### Transaction Management (`ledger/views.py`)
@@ -169,15 +190,59 @@ User Login → Fetch Transactions → Calculate Summaries → Render Dashboard
 ### Chart Types
 1. **Daily Trend Chart**: Line chart showing daily income/expense
 2. **Monthly Bar Chart**: Yearly overview with monthly comparisons
-3. **Category Pie Charts**: Separate charts for income/expense categories
+3. **Interactive Category Pie Charts**: Clickable charts for income/expense categories
+4. **Category Breakdown Tables**: Interactive tables with total calculations
 
 ### Data Insights
 - **Financial Summaries**: Overall and monthly totals
-- **Category Breakdowns**: Spending patterns by category
+- **Payment Method Tracking**: Separate balances for UPI and Hand Cash
+- **Interactive Category Analysis**: Toggle categories to see impact on totals
+- **AI-Powered Analytics**: Month-over-month comparisons and spending insights
+- **Category Breakdowns**: Spending patterns by category with spike detection
 - **Trend Analysis**: Daily and monthly financial trends
-- **Balance Tracking**: Real-time balance calculations
+- **Balance Tracking**: Real-time cumulative balance calculations
+- **Survival Metrics**: Days remaining, burn rate, and financial health scoring
 
-## 🔐 Security Features
+## 🤖 AI-Powered Features
+
+### Smart Insights
+- **Month-over-Month Analysis**: "You're spending 35% more than last month"
+- **Category Spike Detection**: "Food expense spike detected (+45%)"
+- **Savings Tracking**: "This month you saved ₹3,000 more than last month"
+- **Spending Pattern Recognition**: Identifies unusual spending behaviors
+- **High Spending Day Analysis**: Tracks and alerts on exceptional spending days
+
+### Financial Health Monitoring
+- **Health Score Calculation**: 100-point scoring system based on spending patterns
+- **Risk Assessment**: Automatic detection of financial risks
+- **Survival Analysis**: Predicts if user will run out of money before month-end
+- **Cashflow Forecasting**: Projects end-of-month balance based on current trends
+- **Proactive Warnings**: Real-time alerts across all pages
+
+### Dynamic Data Processing
+- **Real-time Updates**: All calculations update automatically based on current date/time
+- **Month Transitions**: Seamless handling of month changes (Jan 31 → Feb 1)
+- **Cumulative Balance Tracking**: Balances carry forward across months
+- **Contextual Recommendations**: Personalized financial advice based on user patterns
+
+## 🛡️ Survival Dashboard
+
+### Core Metrics
+- **Wealth**: Total available funds across all payment methods
+- **Health**: Financial health score with color-coded status indicators
+- **Survival**: Month-end survival prediction with risk assessment
+
+### Advanced Analytics
+- **Daily Burn Rate**: Average daily spending calculation
+- **Projected End Balance**: Month-end balance prediction
+- **Days Until Broke**: Early warning system for fund depletion
+- **Payment Method Breakdown**: Detailed balance analysis by UPI/Hand Cash
+
+### AI Insights Integration
+- **Spending Comparisons**: Intelligent month-over-month analysis
+- **Category Intelligence**: Automatic detection of spending spikes
+- **Behavioral Insights**: Pattern recognition for financial habits
+- **Forecasting**: Trend-based predictions for financial planning
 
 ### Authentication
 - **Login Required**: All views protected with `@login_required`
@@ -245,22 +310,37 @@ Access Django admin at `/admin/` to:
 
 ### Adding a Transaction
 1. Navigate to "Add Transaction"
-2. Select Income or Expense
-3. Enter amount, category, description
-4. Choose date
-5. Save transaction
+2. Select Income or Expense (radio buttons)
+3. Choose Payment Method (UPI Cash or Hand Cash)
+4. Enter amount, category, description
+5. Choose date
+6. Save transaction
 
 ### Viewing Analytics
 1. Click "Analytics" from dashboard
 2. Use month navigation to browse different periods
-3. View charts and category breakdowns
-4. Analyze spending patterns
+3. View interactive charts and category breakdowns
+4. Click categories in pie charts or tables to toggle visibility
+5. Watch totals recalculate dynamically
+6. Analyze spending patterns with and without specific categories
+
+### Using Survival Dashboard
+1. Click "🛡️ Survival" from dashboard or warning alerts
+2. View your financial health score and status
+3. Check available funds and month-end predictions
+4. Review AI insights for spending recommendations
+5. Monitor days remaining and burn rate
+6. Take action based on survival analysis
 
 ### Filtering Transactions
-1. Use date filters on dashboard
-2. Set start and end dates
-3. Click "Filter" to apply
-4. Use "Reset" to clear filters
+1. Use comprehensive filters on dashboard:
+   - Date range (start and end dates)
+   - Category selection
+   - Transaction type (Income/Expense)
+   - Payment method (UPI Cash/Hand Cash)
+2. Click "Filter" to apply multiple filters simultaneously
+3. Use "Reset" to clear all filters
+4. Filters persist during pagination
 
 ## 🔮 Future Enhancements
 

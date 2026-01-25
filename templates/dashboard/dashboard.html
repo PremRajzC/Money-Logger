@@ -136,6 +136,12 @@
         .empty-state { text-align: center; color: #95a5a6; padding: 40px 0; }
         .empty-state-icon { font-size: 3rem; margin-bottom: 10px; }
 
+        /* Warning Alert */
+        .warning-alert { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .warning-text { color: #856404; font-weight: 600; }
+        .survival-btn { background: #ffc107; color: #856404; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+        .survival-btn:hover { background: #e0a800; }
+
 
         
 
@@ -144,10 +150,11 @@
         @media(max-width:768px){
             .container { padding: 15px; }
             .nav-buttons { justify-content: center; }
-            .filter-form { flex-direction: column; gap: 12px; align-items: stretch; }
-            .filter-group { flex: none; min-width: auto; }
-            .filter-group input { width: 100%; font-size: 16px; }
-            .filter-form .btn { align-self: stretch; justify-content: center; margin-top: 5px; }
+            .card > div:first-child { flex-direction: column; align-items: flex-start !important; gap: 15px; }
+            .card form { width: 100%; }
+            .card form { flex-wrap: wrap; gap: 8px; }
+            .card form input, .card form select { flex: 1; min-width: 120px; }
+            .card form button, .card form a { font-size: 16px !important; padding: 8px 12px; }
         }
     </style>
 </head>
@@ -162,9 +169,17 @@
     </div>
 
     <div class="container">
+        {% if warning_message %}
+        <div class="warning-alert">
+            <div class="warning-text">{{ warning_message }}</div>
+            <a href="{% url 'survival' %}" class="survival-btn">🛡️ Check Survival Rate</a>
+        </div>
+        {% endif %}
+        
         <div class="nav-buttons">
             <a href="{% url 'add_transaction' %}" class="btn primary">➕ Add Transaction</a>
             <a href="{% url 'analytics' %}" class="btn">📊 Analytics</a>
+            <a href="{% url 'survival' %}" class="btn">🛡️ Survival</a>
             <a href="{% url 'logout' %}" class="btn" style="background: #e74c3c; color: #fff;">🚪 Logout</a>
         </div>
 
@@ -179,37 +194,53 @@
             </div>
             <div class="stat-card balance">
                 <div class="stat-value">₹{{ balance|floatformat:0|intcomma }}</div>
-                <div class="stat-label">Balance</div>
+                <div class="stat-label">Net Balance</div>
+            </div>
+        </div>
+        
+        <!-- Money Type Balances -->
+        <div class="card">
+            <h2>Balance by Payment Method</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 5px;">₹{{ upi_balance|floatformat:0|intcomma }}</div>
+                    <div style="font-size: 0.9rem; opacity: 0.9;">UPI CASH</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white; padding: 20px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 5px;">₹{{ hand_balance|floatformat:0|intcomma }}</div>
+                    <div style="font-size: 0.9rem; opacity: 0.9;">HAND CASH</div>
+                </div>
             </div>
         </div>
 
         <div class="card">
-            <h2>Filter Transactions</h2>
-            <form method="get" class="filter-form">
-                <div class="filter-group">
-                    <label for="start_date">Start Date</label>
-                    <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
-                </div>
-                <div class="filter-group">
-                    <label for="end_date">End Date</label>
-                    <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
-                </div>
-                <div class="filter-group">
-                    <label for="category">Category</label>
-                    <select id="category" name="category" style="padding: 10px; border-radius: 10px; border: 1px solid #dcdde1; font-size: 0.9rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>Recent Transactions</h2>
+                <form method="get" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="date" name="start_date" value="{{ start_date }}" style="padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem;">
+                    <input type="date" name="end_date" value="{{ end_date }}" style="padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem;">
+                    <select name="category" style="padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem;">
                         <option value="">All Categories</option>
                         {% for cat in categories %}
                             <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
                         {% endfor %}
                     </select>
-                </div>
-                <button type="submit" class="btn primary">🔍 Filter</button>
-                <a href="{% url 'dashboard' %}" class="btn">Reset</a>
-            </form>
-        </div>
-
-        <div class="card transactions-card">
-            <h2>Recent Transactions</h2>
+                    <select name="transaction_type" style="padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem;">
+                        <option value="">All Types</option>
+                        {% for type_value, type_label in transaction_types %}
+                            <option value="{{ type_value }}" {% if transaction_type == type_value %}selected{% endif %}>{{ type_label }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="money_type" style="padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem;">
+                        <option value="">All Methods</option>
+                        {% for money_value, money_label in money_types %}
+                            <option value="{{ money_value }}" {% if money_type == money_value %}selected{% endif %}>{{ money_label }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn" style="padding: 6px 12px; font-size: 0.85rem;">Filter</button>
+                    <a href="{% url 'dashboard' %}" class="btn" style="padding: 6px 12px; font-size: 0.85rem;">Reset</a>
+                </form>
+            </div>
             <div id="transactions-container">
                 {% include 'dashboard/_transactions_table.html' %}
             </div>
@@ -223,9 +254,17 @@
         container.addEventListener('click', function(e) {
             if (e.target.classList.contains('page-link')) {
                 e.preventDefault();
-                const url = e.target.getAttribute('href');
+                const url = new URL(e.target.getAttribute('href'), window.location.origin);
+                
+                // Preserve current filter parameters
+                const currentParams = new URLSearchParams(window.location.search);
+                currentParams.forEach((value, key) => {
+                    if (key !== 'page') {
+                        url.searchParams.set(key, value);
+                    }
+                });
 
-                fetch(url, {
+                fetch(url.toString(), {
                     headers: { 'x-requested-with': 'XMLHttpRequest' }
                 })
                 .then(response => response.json())

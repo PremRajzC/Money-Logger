@@ -8,6 +8,7 @@
             <th>Category</th>
             <th>Description</th>
             <th>Type</th>
+            <th>Payment</th>
             <th>Amount</th>
         </tr>
     </thead>
@@ -23,6 +24,9 @@
                 <span class="{% if transaction.transaction_type == 'INCOME' %}badge-income{% else %}badge-expense{% endif %}">
                     {{ transaction.transaction_type|title }}
                 </span>
+            </td>
+            <td>
+                <span style="background: #e9ecef; padding: 3px 6px; border-radius: 6px; font-size: 0.75rem; color: #6c757d;">{{ transaction.money_type }}</span>
             </td>
             <td class="{% if transaction.transaction_type == 'INCOME' %}amount-positive{% else %}amount-negative{% endif %}">
                 {% if transaction.transaction_type == 'INCOME' %}+{% else %}-{% endif %}₹{{ transaction.amount|floatformat:0|intcomma }}

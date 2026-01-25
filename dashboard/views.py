@@ -4,6 +4,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 from datetime import datetime, date
+import calendar
 from ledger.models import Transaction
 
 from django.template.loader import render_to_string
@@ -14,6 +15,8 @@ def dashboard(request):
     start_date = request.GET.get("start_date")
     end_date = request.GET.get("end_date")
     category = request.GET.get("category")
+    transaction_type = request.GET.get("transaction_type")
+    money_type = request.GET.get("money_type")
     page = request.GET.get("page", 1)
 
     transactions = Transaction.objects.filter(user=request.user).order_by('-date')
@@ -36,6 +39,14 @@ def dashboard(request):
     # Filter by category
     if category:
         transactions = transactions.filter(category__icontains=category)
+    
+    # Filter by transaction type
+    if transaction_type:
+        transactions = transactions.filter(transaction_type=transaction_type)
+    
+    # Filter by money type
+    if money_type:
+        transactions = transactions.filter(money_type=money_type)
 
     paginator = Paginator(transactions, 10)
     transactions_page = paginator.get_page(page)
@@ -43,6 +54,60 @@ def dashboard(request):
     total_income = transactions.filter(transaction_type="INCOME").aggregate(total=Sum("amount"))["total"] or 0
     total_expense = transactions.filter(transaction_type="EXPENSE").aggregate(total=Sum("amount"))["total"] or 0
     balance = total_income - total_expense
+    
+    # Calculate balance by money type - FIXED LOGIC
+    all_transactions = Transaction.objects.filter(user=request.user)
+    
+    # UPI Cash balance - corrected calculation
+    upi_income = all_transactions.filter(transaction_type="INCOME", money_type="UPI CASH").aggregate(total=Sum("amount"))["total"] or 0
+    upi_expense = all_transactions.filter(transaction_type="EXPENSE", money_type="UPI CASH").aggregate(total=Sum("amount"))["total"] or 0
+    upi_balance = upi_income - upi_expense
+    
+    # Hand Cash balance - corrected calculation  
+    hand_income = all_transactions.filter(transaction_type="INCOME", money_type="HAND CASH").aggregate(total=Sum("amount"))["total"] or 0
+    hand_expense = all_transactions.filter(transaction_type="EXPENSE", money_type="HAND CASH").aggregate(total=Sum("amount"))["total"] or 0
+    hand_balance = hand_income - hand_expense
+    
+    # Survival calculations for warning
+    today = date.today()
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    days_passed = max(1, today.day)
+    days_left = days_in_month - today.day
+    
+    month_transactions = all_transactions.filter(date__year=today.year, date__month=today.month)
+    expense_mtd = month_transactions.filter(transaction_type="EXPENSE").aggregate(Sum("amount"))["amount__sum"] or 0
+    avg_daily_spend = float(expense_mtd) / days_passed if days_passed > 0 else 0
+    projected_remaining_spend = avg_daily_spend * days_left
+    available_funds = float(upi_balance) + float(hand_balance)
+    projected_end_balance = available_funds - projected_remaining_spend
+    survive = projected_end_balance >= 0
+    
+    # Health score for warning
+    health_score = 100
+    if expense_mtd > total_income:
+        health_score -= 20
+    if projected_end_balance < 0:
+        health_score -= 30
+    if avg_daily_spend > 500:
+        health_score -= 15
+    
+    # Days until broke
+    days_until_broke = None
+    if not survive and avg_daily_spend > 0:
+        days_until_broke = int(available_funds / avg_daily_spend) 
+    # Generate warning message for dashboard
+    warning_message = ""
+    if not survive:
+        if days_until_broke:
+            warning_message = f"⚠️ Warning: Money will run out in {days_until_broke} days at current spending rate"
+        else:
+            warning_message = "🚨 Critical: Insufficient funds for the month"
+    elif health_score < 50:
+        warning_message = "🚨 Financial health is at risk - review your spending immediately"
+    elif health_score < 70:
+        warning_message = "⚠️ Caution: Your spending patterns need attention"
+    elif avg_daily_spend > 500:
+        warning_message = f"💡 Notice: Daily spending (₹{avg_daily_spend:.0f}) is above average"
     
     # Get unique categories for filter dropdown
     categories = Transaction.objects.filter(user=request.user).values_list('category', flat=True).distinct().order_by('category')
@@ -52,10 +117,17 @@ def dashboard(request):
         "total_income": total_income,
         "total_expense": total_expense,
         "balance": balance,
+        "upi_balance": upi_balance,
+        "hand_balance": hand_balance,
         "start_date": start_date,
         "end_date": end_date,
         "category": category,
+        "transaction_type": transaction_type,
+        "money_type": money_type,
         "categories": categories,
+        "transaction_types": [("INCOME", "Income"), ("EXPENSE", "Expense")],
+        "money_types": [("UPI CASH", "UPI Cash"), ("HAND CASH", "Hand Cash")],
+        "warning_message": warning_message,
     }
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -151,6 +223,35 @@ def analytics(request):
     next_month_date = current_month_date.replace(day=28) + timedelta(days=4)
     next_month = next_month_date - timedelta(days=next_month_date.day-1)
     
+    # Survival warning for analytics
+    today = datetime.now().date()
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    days_passed = max(1, today.day)
+    days_left = days_in_month - today.day
+    
+    all_user_transactions = Transaction.objects.filter(user=request.user)
+    upi_income = all_user_transactions.filter(transaction_type="INCOME", money_type="UPI CASH").aggregate(total=Sum("amount"))["total"] or 0
+    upi_expense = all_user_transactions.filter(transaction_type="EXPENSE", money_type="UPI CASH").aggregate(total=Sum("amount"))["total"] or 0
+    hand_income = all_user_transactions.filter(transaction_type="INCOME", money_type="HAND CASH").aggregate(total=Sum("amount"))["total"] or 0
+    hand_expense = all_user_transactions.filter(transaction_type="EXPENSE", money_type="HAND CASH").aggregate(total=Sum("amount"))["total"] or 0
+    available_funds = float((upi_income - upi_expense) + (hand_income - hand_expense))
+    
+    current_month_expense = all_user_transactions.filter(date__year=today.year, date__month=today.month, transaction_type="EXPENSE").aggregate(Sum("amount"))["amount__sum"] or 0
+    avg_daily_spend = float(current_month_expense) / days_passed if days_passed > 0 else 0
+    projected_end_balance = available_funds - (avg_daily_spend * days_left)
+    survive = projected_end_balance >= 0
+    
+    days_until_broke = None
+    if not survive and avg_daily_spend > 0:
+        days_until_broke = int(available_funds / avg_daily_spend)
+    
+    warning_message = ""
+    if not survive:
+        if days_until_broke:
+            warning_message = f"⚠️ Warning: Money will run out in {days_until_broke} days at current spending rate"
+        else:
+            warning_message = "🚨 Critical: Insufficient funds for the month"
+    
     context = {
         "total_income": total_income,
         "total_expense": total_expense,
@@ -175,6 +276,161 @@ def analytics(request):
         "month_labels": month_labels,
         "yearly_income": yearly_income,
         "yearly_expense": yearly_expense,
+        "warning_message": warning_message,
     }
     
     return render(request, "dashboard/analytics.html", context)
+
+
+@login_required
+def survival_dashboard(request):
+    today = date.today()
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    days_passed = max(1, today.day)
+    days_left = days_in_month - today.day
+    
+    # Get current month transactions
+    qs = Transaction.objects.filter(user=request.user, date__year=today.year, date__month=today.month)
+    
+    # Monthly totals
+    income_mtd = qs.filter(transaction_type="INCOME").aggregate(Sum("amount"))["amount__sum"] or 0
+    expense_mtd = qs.filter(transaction_type="EXPENSE").aggregate(Sum("amount"))["amount__sum"] or 0
+    net_mtd = income_mtd - expense_mtd
+    
+    # Current balances (cumulative from ALL transactions - carries forward from previous months)
+    all_transactions = Transaction.objects.filter(user=request.user)
+    
+    # UPI Cash balance - cumulative from all time
+    upi_income = all_transactions.filter(transaction_type="INCOME", money_type="UPI CASH").aggregate(total=Sum("amount"))["total"] or 0
+    upi_expense = all_transactions.filter(transaction_type="EXPENSE", money_type="UPI CASH").aggregate(total=Sum("amount"))["total"] or 0
+    upi_balance = upi_income - upi_expense
+    
+    # Hand Cash balance - cumulative from all time
+    hand_income = all_transactions.filter(transaction_type="INCOME", money_type="HAND CASH").aggregate(total=Sum("amount"))["total"] or 0
+    hand_expense = all_transactions.filter(transaction_type="EXPENSE", money_type="HAND CASH").aggregate(total=Sum("amount"))["total"] or 0
+    hand_balance = hand_income - hand_expense
+    
+    # Survival calculations
+    avg_daily_spend = float(expense_mtd) / days_passed if days_passed > 0 else 0
+    projected_remaining_spend = avg_daily_spend * days_left
+    available_funds = float(upi_balance) + float(hand_balance)
+    projected_end_balance = available_funds - projected_remaining_spend
+    survive = projected_end_balance >= 0
+    
+    # Health score calculation
+    health_score = 100
+    if expense_mtd > income_mtd:
+        health_score -= 20
+    if projected_end_balance < 0:
+        health_score -= 30
+    if avg_daily_spend > 500:  # High daily spend
+        health_score -= 15
+    
+    # Health status
+    if health_score >= 80:
+        health_status = "Healthy ✅"
+        health_color = "#2ecc71"
+    elif health_score >= 50:
+        health_status = "Caution ⚠️"
+        health_color = "#f39c12"
+    else:
+        health_status = "Risk 🚨"
+        health_color = "#e74c3c"
+    
+    # Days until out of money (if applicable)
+    days_until_broke = None
+    if not survive and avg_daily_spend > 0:
+        days_until_broke = int(available_funds / avg_daily_spend)
+    
+    # Generate warning message
+    warning_message = ""
+    if not survive:
+        if days_until_broke:
+            warning_message = f"⚠️ Warning: Money will run out in {days_until_broke} days at current spending rate"
+        else:
+            warning_message = "🚨 Critical: Insufficient funds for the month"
+    elif health_score < 50:
+        warning_message = "🚨 Financial health is at risk - review your spending immediately"
+    elif health_score < 70:
+        warning_message = "⚠️ Caution: Your spending patterns need attention"
+    elif avg_daily_spend > 500:
+        warning_message = f"💡 Notice: Daily spending (₹{avg_daily_spend:.0f}) is above average"
+    
+    # AI Insights generation
+    from datetime import timedelta
+    insights = []
+    
+    # Compare with last month
+    last_month = today.replace(day=1) - timedelta(days=1)
+    last_month_transactions = all_transactions.filter(date__year=last_month.year, date__month=last_month.month)
+    last_month_expense = last_month_transactions.filter(transaction_type="EXPENSE").aggregate(Sum("amount"))["amount__sum"] or 0
+    
+    if last_month_expense > 0:
+        expense_change = ((float(expense_mtd) - float(last_month_expense)) / float(last_month_expense)) * 100
+        if expense_change > 25:
+            insights.append(f"📈 You're spending {expense_change:.0f}% more than last month")
+        elif expense_change < -15:
+            insights.append(f"📉 Great! You've reduced spending by {abs(expense_change):.0f}% from last month")
+    
+    # Category insights
+    current_categories = qs.filter(transaction_type="EXPENSE").values("category").annotate(total=Sum("amount")).order_by("-total")
+    last_month_categories = last_month_transactions.filter(transaction_type="EXPENSE").values("category").annotate(total=Sum("amount"))
+    
+    # Convert to dict for easy lookup
+    last_month_dict = {item['category']: float(item['total']) for item in last_month_categories}
+    
+    for category in current_categories[:3]:  # Top 3 categories
+        current_amount = float(category['total'])
+        last_amount = last_month_dict.get(category['category'], 0)
+        
+        if last_amount > 0:
+            change = ((current_amount - last_amount) / last_amount) * 100
+            if change > 30:
+                insights.append(f"🔥 {category['category']} expense spike detected (+{change:.0f}%)")
+    
+    # Savings insight
+    last_month_income = last_month_transactions.filter(transaction_type="INCOME").aggregate(Sum("amount"))["amount__sum"] or 0
+    current_savings = float(income_mtd) - float(expense_mtd)
+    last_month_savings = float(last_month_income) - float(last_month_expense)
+    
+    if current_savings > last_month_savings + 1000:
+        savings_diff = current_savings - last_month_savings
+        insights.append(f"💰 This month you saved ₹{savings_diff:.0f} more than last month")
+    
+    # High spending day insight
+    daily_expenses = qs.filter(transaction_type="EXPENSE").values("date").annotate(total=Sum("amount")).order_by("-total")
+    if daily_expenses:
+        highest_day = daily_expenses[0]
+        if float(highest_day['total']) > avg_daily_spend * 2:
+            insights.append(f"📅 Your highest spending day was {highest_day['date'].strftime('%b %d')} (₹{highest_day['total']:.0f})")
+    
+    # Cashflow forecast
+    if survive:
+        insights.append(f"✅ At current pace, you'll end the month with ₹{projected_end_balance:.0f}")
+    
+    # Limit to 3 most relevant insights
+    insights = insights[:3]
+    
+    context = {
+        "income_mtd": income_mtd,
+        "expense_mtd": expense_mtd,
+        "net_mtd": net_mtd,
+        "upi_balance": upi_balance,
+        "hand_balance": hand_balance,
+        "available_funds": available_funds,
+        "avg_daily_spend": avg_daily_spend,
+        "projected_remaining_spend": projected_remaining_spend,
+        "projected_end_balance": projected_end_balance,
+        "survive": survive,
+        "days_left": days_left,
+        "days_until_broke": days_until_broke,
+        "health_score": health_score,
+        "health_status": health_status,
+        "health_color": health_color,
+        "days_passed": days_passed,
+        "days_in_month": days_in_month,
+        "warning_message": warning_message,
+        "insights": insights,
+    }
+    
+    return render(request, "dashboard/survival.html", context)

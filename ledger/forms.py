@@ -15,13 +15,20 @@ CATEGORY_CHOICES = [
     ('Others', 'Others'),
 ]
 
+MONEY_TYPE_CHOICES = [
+    ('HAND CASH', 'Hand Cash'),
+    ('UPI CASH', 'UPI Cash'),
+]
+
 class TransactionForm(forms.ModelForm):
     category = forms.ChoiceField(choices=CATEGORY_CHOICES, widget=forms.Select(attrs={"class": "form-control"}))
+    money_type = forms.ChoiceField(choices=MONEY_TYPE_CHOICES, widget=forms.Select(attrs={"class": "form-control"}))
     
     class Meta:
         model = Transaction
         fields = [
             "transaction_type",
+            "money_type",
             "amount",
             "category",
             "description",

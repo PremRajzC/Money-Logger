@@ -10,6 +10,11 @@ class Transaction(models.Model):
         ("EXPENSE", "Expense"),
     )
 
+    MONEY_TYPE = (
+        ("HAND CASH", "Hand Cash"),
+        ("UPI CASH", "UPI Cash")
+    )
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -17,6 +22,7 @@ class Transaction(models.Model):
     )
 
     transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPE)
+    money_type = models.CharField(max_length=20, choices=MONEY_TYPE, default="HAND CASH")
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     category = models.CharField(max_length=50)
     description = models.CharField(max_length=200, blank=True)
