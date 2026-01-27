@@ -10,7 +10,7 @@ CATEGORY_CHOICES = [
     ('Rent', 'Rent'),
     ('Travels', 'Travels'),
     ('Home Things', 'Home Things'),
-    ("Projects","Projects"),
+    ("Loan","Loan"),
     ("Purchasing","Purchasing"),
     ('Others', 'Others'),
 ]

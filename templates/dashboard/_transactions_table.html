@@ -1,22 +1,22 @@
 {% load humanize %}
 {% if transactions %}
-<div id="totals-display" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: none;">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="font-weight: 600; color: #495057;">Recalculated Totals (excluding selected):</div>
-        <button onclick="resetTotals()" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">Reset</button>
+<div id="totals-display" style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div style="font-weight: 600; color: #495057; font-size: 0.85rem;">Recalculated:</div>
+        <button onclick="resetTotals()" style="background: #6c757d; color: white; border: none; padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 0.75rem;">Reset</button>
     </div>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px;">
-        <div style="text-align: center;">
-            <div style="color: #2ecc71; font-weight: 700; font-size: 1.2rem;" id="new-income">₹0</div>
-            <div style="font-size: 0.8rem; color: #6c757d;">Income</div>
+    <div style="display: flex; gap: 8px; justify-content: space-between;">
+        <div style="flex: 1; text-align: center; background: white; padding: 8px; border-radius: 6px;">
+            <div style="color: #2ecc71; font-weight: 700; font-size: 1rem;" id="new-income">₹0</div>
+            <div style="font-size: 0.7rem; color: #6c757d;">Income</div>
         </div>
-        <div style="text-align: center;">
-            <div style="color: #e74c3c; font-weight: 700; font-size: 1.2rem;" id="new-expense">₹0</div>
-            <div style="font-size: 0.8rem; color: #6c757d;">Expense</div>
+        <div style="flex: 1; text-align: center; background: white; padding: 8px; border-radius: 6px;">
+            <div style="color: #e74c3c; font-weight: 700; font-size: 1rem;" id="new-expense">₹0</div>
+            <div style="font-size: 0.7rem; color: #6c757d;">Expense</div>
         </div>
-        <div style="text-align: center;">
-            <div style="color: #3498db; font-weight: 700; font-size: 1.2rem;" id="new-balance">₹0</div>
-            <div style="font-size: 0.8rem; color: #6c757d;">Balance</div>
+        <div style="flex: 1; text-align: center; background: white; padding: 8px; border-radius: 6px;">
+            <div style="color: #3498db; font-weight: 700; font-size: 1rem;" id="new-balance">₹0</div>
+            <div style="font-size: 0.7rem; color: #6c757d;">Balance</div>
         </div>
     </div>
 </div>
