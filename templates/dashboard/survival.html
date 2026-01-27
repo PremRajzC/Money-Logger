@@ -141,10 +141,17 @@
                     </div>
                     <div class="detail-label">Month End Balance</div>
                 </div>
+                {% if broke_date %}
+                <div class="detail-item" style="background: #fee; border: 2px solid #e74c3c;">
+                    <div class="detail-value danger">💀 {{ broke_date|date:"d M, Y" }}</div>
+                    <div class="detail-label">Estimated Broke Date</div>
+                </div>
+                {% else %}
                 <div class="detail-item">
                     <div class="detail-value">{{ days_passed }}/{{ days_in_month }}</div>
                     <div class="detail-label">Days Passed</div>
                 </div>
+                {% endif %}
             </div>
         </div>
 

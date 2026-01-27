@@ -3,8 +3,10 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import calendar
+import math
+from decimal import Decimal
 from ledger.models import Transaction
 
 from django.template.loader import render_to_string
@@ -80,7 +82,7 @@ def dashboard(request):
     days_left = days_in_month - today.day
     
     month_transactions = all_transactions.filter(date__year=today.year, date__month=today.month)
-    expense_mtd = month_transactions.filter(transaction_type="EXPENSE").aggregate(Sum("amount"))["amount__sum"] or 0
+    expense_mtd = month_transactions.filter(transaction_type="EXPENSE", date__lte=today).aggregate(Sum("amount"))["amount__sum"] or 0
     avg_daily_spend = float(expense_mtd) / days_passed if days_passed > 0 else 0
     projected_remaining_spend = avg_daily_spend * days_left
     available_funds = float(upi_balance) + float(hand_balance)
@@ -100,16 +102,23 @@ def dashboard(request):
     if avg_daily_spend > 0 and today_expense > avg_daily_spend * 1.5:
         health_score -= 15
     
-    # Days until broke
+    # Days until broke with production-grade calculation
     days_until_broke = None
+    broke_date = None
     if not survive and avg_daily_spend > 0:
-        days_until_broke = int(available_funds / avg_daily_spend) 
+        days_until_broke = math.ceil(available_funds / avg_daily_spend)
+        # Avoid absurd predictions (more than 1 year)
+        if days_until_broke < 365:
+            broke_date = today + timedelta(days=days_until_broke)
+    
     # Generate warning message for dashboard
     warning_message = ""
     if today_expense > avg_daily_spend * 1.5 and avg_daily_spend > 0:
         warning_message = f"⚠️ Warning: You spent ₹{today_expense:.0f} today, which is {((today_expense/avg_daily_spend - 1) * 100):.0f}% more than your daily average of ₹{avg_daily_spend:.0f}"
     elif not survive:
-        if days_until_broke:
+        if broke_date:
+            warning_message = f"🚨 At current spending rate, your money may run out in {days_until_broke} days (by {broke_date.strftime('%d %b, %Y')})"
+        elif days_until_broke:
             warning_message = f"⚠️ Warning: Money will run out in {days_until_broke} days at current spending rate"
         else:
             warning_message = "🚨 Critical: Insufficient funds for the month"
@@ -249,7 +258,7 @@ def analytics(request):
     hand_to_switch = all_user_transactions.filter(transaction_type="SWITCH", switch_direction="HAND_TO_UPI").aggregate(total=Sum("amount"))["total"] or 0
     available_funds = float((upi_income - upi_expense + upi_from_switch - upi_to_switch) + (hand_income - hand_expense + hand_from_switch - hand_to_switch))
     
-    current_month_expense = all_user_transactions.filter(date__year=today.year, date__month=today.month, transaction_type="EXPENSE").aggregate(Sum("amount"))["amount__sum"] or 0
+    current_month_expense = all_user_transactions.filter(date__year=today.year, date__month=today.month, transaction_type="EXPENSE", date__lte=today).aggregate(Sum("amount"))["amount__sum"] or 0
     avg_daily_spend = float(current_month_expense) / days_passed if days_passed > 0 else 0
     projected_end_balance = available_funds - (avg_daily_spend * days_left)
     survive = projected_end_balance >= 0
@@ -259,14 +268,19 @@ def analytics(request):
     today_expense = float(today_expense)
     
     days_until_broke = None
+    broke_date = None
     if not survive and avg_daily_spend > 0:
-        days_until_broke = int(available_funds / avg_daily_spend)
+        days_until_broke = math.ceil(available_funds / avg_daily_spend)
+        if days_until_broke < 365:
+            broke_date = today + timedelta(days=days_until_broke)
     
     warning_message = ""
     if today_expense > avg_daily_spend * 1.5 and avg_daily_spend > 0:
         warning_message = f"⚠️ Warning: You spent ₹{today_expense:.0f} today, which is {((today_expense/avg_daily_spend - 1) * 100):.0f}% more than your daily average of ₹{avg_daily_spend:.0f}"
     elif not survive:
-        if days_until_broke:
+        if broke_date:
+            warning_message = f"🚨 At current spending rate, your money may run out in {days_until_broke} days (by {broke_date.strftime('%d %b, %Y')})"
+        elif days_until_broke:
             warning_message = f"⚠️ Warning: Money will run out in {days_until_broke} days at current spending rate"
         else:
             warning_message = "🚨 Critical: Insufficient funds for the month"
@@ -313,7 +327,7 @@ def survival_dashboard(request):
     
     # Monthly totals
     income_mtd = qs.filter(transaction_type="INCOME").aggregate(Sum("amount"))["amount__sum"] or 0
-    expense_mtd = qs.filter(transaction_type="EXPENSE").aggregate(Sum("amount"))["amount__sum"] or 0
+    expense_mtd = qs.filter(transaction_type="EXPENSE", date__lte=today).aggregate(Sum("amount"))["amount__sum"] or 0
     net_mtd = income_mtd - expense_mtd
     
     # Current balances (cumulative from ALL transactions - carries forward from previous months)
@@ -381,17 +395,22 @@ def survival_dashboard(request):
         health_status = "Risk 🚨"
         health_color = "#e74c3c"
     
-    # Days until out of money (if applicable)
+    # Days until out of money with production-grade calculation
     days_until_broke = None
+    broke_date = None
     if not survive and avg_daily_spend > 0:
-        days_until_broke = int(available_funds / avg_daily_spend)
+        days_until_broke = math.ceil(available_funds / avg_daily_spend)
+        if days_until_broke < 365:
+            broke_date = today + timedelta(days=days_until_broke)
     
     # Generate warning message
     warning_message = ""
     if today_expense > avg_daily_spend * 1.5 and avg_daily_spend > 0:
         warning_message = f"⚠️ Warning: You spent ₹{today_expense:.0f} today, which is {((today_expense/avg_daily_spend - 1) * 100):.0f}% more than your daily average of ₹{avg_daily_spend:.0f}"
     elif not survive:
-        if days_until_broke:
+        if broke_date:
+            warning_message = f"🚨 At current spending rate, your money may run out in {days_until_broke} days (by {broke_date.strftime('%d %b, %Y')})"
+        elif days_until_broke:
             warning_message = f"⚠️ Warning: Money will run out in {days_until_broke} days at current spending rate"
         else:
             warning_message = "🚨 Critical: Insufficient funds for the month"
@@ -441,7 +460,7 @@ def survival_dashboard(request):
         insights.append(f"💰 This month you saved ₹{savings_diff:.0f} more than last month")
     
     # High spending day insight
-    daily_expenses = qs.filter(transaction_type="EXPENSE").values("date").annotate(total=Sum("amount")).order_by("-total")
+    daily_expenses = qs.filter(transaction_type="EXPENSE", date__lte=today).values("date").annotate(total=Sum("amount")).order_by("-total")
     if daily_expenses:
         highest_day = daily_expenses[0]
         if float(highest_day['total']) > avg_daily_spend * 2:
@@ -467,6 +486,7 @@ def survival_dashboard(request):
         "survive": survive,
         "days_left": days_left,
         "days_until_broke": days_until_broke,
+        "broke_date": broke_date,
         "health_score": health_score,
         "health_status": health_status,
         "health_color": health_color,
