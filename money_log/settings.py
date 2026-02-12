@@ -132,33 +132,6 @@ if PRODUCTION_MODE:
         }
     }
 
-    # import os
-    # import dj_database_url
-    
-    # INTERNAL_DATABASE_URL=os.getenv("INTERNAL_DATABASE_URL")
-    # EXTERNAL_DATABASE_URL = os.getenv("EXTERNAL_DATABASE_URL")
-    # USE_INTERNAL_DB = os.getenv("USE_INTERNAL_DB").lower() == 'true'
-
-
-    # if USE_INTERNAL_DB and  not INTERNAL_DATABASE_URL:
-    #     raise Exception("INTERNAL_DATABASE_URL environment variable not set")
-    
-    # if not USE_INTERNAL_DB and not EXTERNAL_DATABASE_URL:
-    #     raise Exception("EXTERNAL_DATABASE_URL environment variable not set")
-    
-    # if USE_INTERNAL_DB :
-    #     default = INTERNAL_DATABASE_URL
-    
-    # else:
-    #     default = EXTERNAL_DATABASE_URL
-
-    # DATABASES = {
-    # "default": dj_database_url.config(
-    #     default=default,
-    #     conn_max_age=600,
-    #     ssl_require=True
-    #     )
-    # }
 
 
 else:
